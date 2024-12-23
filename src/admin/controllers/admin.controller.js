@@ -2,6 +2,8 @@ import {
   listAlbums,
   addAlbumService,
   addPhotoService,
+  getUser,
+  changePwdService,
 } from '../services/admin.service.js';
 
 export const login = async (req, res) => {
@@ -15,12 +17,23 @@ export const login = async (req, res) => {
 };
 
 export const addAlbum = async (req, res) => {
-  const { thumbnail, alt, title, description } = req.body;
+  const { thumbnail, alt, title, description, imagenes } = req.body;
 
-  const request = await addAlbumService({ thumbnail, alt, title, description });
-  if (request?.error) {
-    return res.status(401).json({ error: true, msg: request.msg });
+  const requestAlbum = await addAlbumService({
+    thumbnail,
+    alt,
+    title,
+    description,
+  });
+  if (requestAlbum?.error) {
+    return res.status(400).json({ error: true, msg: request.msg });
   }
+
+  const requestPhotos = await addPhotoService({ porfolio_id: id, imagenes });
+  if (requestPhotos?.error) {
+    return res.status(400).json({ error: true, msg: request.msg });
+  }
+
   return res.status(200).json({ error: false, msg: request.data });
 };
 
@@ -39,5 +52,25 @@ export const getListAlbums = async (req, res) => {
   // if (request?.error) {
   //   return res.status(401).json({ error: true, msg: request.msg });
   // }
+  return res.status(200).json({ error: false, data: request });
+};
+
+export const getUsers = async (req, res) => {
+  const { user, passUser } = req.body;
+  const request = await getUser({ user, passUser });
+  if (request.error) {
+    return res.status(401).json({ error: true, msg: request.msg });
+  }
+  return res.status(200).json({ error: false, data: request });
+};
+
+/** Cambiar contraseña de usuario */
+export const changePwd = async (req, res) => {
+  const { pwd } = req.body;
+  const request = await changePwdService({ pwd });
+
+  if (request.error) {
+    return res.status(401).json({ error: true, msg: request.msg });
+  }
   return res.status(200).json({ error: false, data: request });
 };

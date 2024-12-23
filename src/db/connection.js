@@ -5,5 +5,5 @@ const client = createClient({
   url: config.DATA_BASE_URL || '',
   authToken: config.DATA_BASE_TOKEN || '',
 });
-console.log(config.DATA_BASE_URL);
+
 export default client;

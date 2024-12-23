@@ -4,6 +4,8 @@ import {
   addPhotos,
   login,
   getListAlbums,
+  changePwd,
+  getUsers,
 } from '../controllers/admin.controller.js';
 import { verifyToken } from '../middlewares/authJwt.js';
 
@@ -18,4 +20,6 @@ router.post('/login', login);
 router.post('/addAlbums', verifyToken, addAlbum);
 router.post('/addPhoto', verifyToken, addPhotos);
 router.get('/albums', getListAlbums);
+router.post('/users', getUsers);
+router.post('/changePassword', changePwd);
 export default router;
