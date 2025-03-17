@@ -4,7 +4,7 @@ import {
   addPhotoService,
   getUser,
   changePwdService,
-} from '../services/admin.service.js';
+} from "../services/admin.service.js";
 
 export const login = async (req, res) => {
   const { id } = req.body;
@@ -17,11 +17,10 @@ export const login = async (req, res) => {
 };
 
 export const addAlbum = async (req, res) => {
-  const { thumbnail, alt, title, description, imagenes } = req.body;
+  const { thumbnail, title, description, images } = req.body;
 
   const requestAlbum = await addAlbumService({
     thumbnail,
-    alt,
     title,
     description,
   });
@@ -29,12 +28,17 @@ export const addAlbum = async (req, res) => {
     return res.status(400).json({ error: true, msg: request.msg });
   }
 
-  const requestPhotos = await addPhotoService({ porfolio_id: id, imagenes });
+  console.log("images", images);
+
+  const requestPhotos = await addPhotoService({
+    porfolio_id: requestAlbum.data.lastInsertRowid,
+    images,
+  });
   if (requestPhotos?.error) {
     return res.status(400).json({ error: true, msg: request.msg });
   }
 
-  return res.status(200).json({ error: false, msg: request.data });
+  return res.status(200).json({ error: false, msg: requestPhotos.data });
 };
 
 export const addPhotos = async (req, res) => {

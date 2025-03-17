@@ -1,14 +1,14 @@
-import client from '../../db/connection.js';
-import bcrypt from 'bcryptjs';
-import { nvl } from '../../utils.js';
+import client from "../../db/connection.js";
+import bcrypt from "bcryptjs";
+import { nvl } from "../../utils.js";
 
 /** Función para el inicio de sesión del usuario al sistema.
  * @returns {Array} id y rol
  */
-export const logger = async (user = '', pass) => {
+export const logger = async (user = "", pass) => {
   let compare = false;
   let result = [];
-  const verifyCUITQr = 'SELECT * FROM user where user = @USER';
+  const verifyCUITQr = "SELECT * FROM user where user = @USER";
   const verifyCUITRst = await client.execute(verifyCUITQr);
   const { rows: usuario } = verifyCUITQr;
 
@@ -34,25 +34,28 @@ export const logger = async (user = '', pass) => {
   });
 };
 
-export const addPhotoService = async ({ porfolio_id, imagenes = [] }) => {
+export const addPhotoService = async ({ porfolio_id, images = [] }) => {
   try {
-    let queryInsert = 'INSERT INTO portfolio VALUES ';
-    let queryValues = '';
+    let queryInsert = `INSERT INTO albumPhotos (porfolio_id, width,height, name, url) VALUES `;
+    let queryValues = "";
     let queryArgs = {};
     let i = 0;
-    for (const img of imagenes) {
-      queryValues += `(:porfolio_id, :width${i}, :height${i}, :name${i}),`;
+    for (const img of images) {
+      queryValues += `(:porfolio_id, :width${i}, :height${i}, :name${i}, :url${i}),`;
       queryArgs[`width${i}`] = img.width;
       queryArgs[`height${i}`] = img.height;
-      queryArgs[`name${i}`] = img.url;
+      queryArgs[`name${i}`] = img.id;
+      queryArgs[`url${i}`] = img.url;
       i++;
     }
     queryValues = queryValues.slice(0, -1);
     queryInsert += queryValues;
+
     const result = await client.execute({
       sql: queryInsert,
       args: { porfolio_id, ...queryArgs },
     });
+
     return { data: result, error: false };
   } catch (error) {
     console.error(error);
@@ -61,14 +64,14 @@ export const addPhotoService = async ({ porfolio_id, imagenes = [] }) => {
 };
 
 export const addAlbumService = async ({
-  thumbnail = '',
-  alt = '',
-  title = '',
-  description = '',
+  thumbnail = "",
+  alt = "Foto de porfolio",
+  title = "",
+  description = "",
 }) => {
   try {
     const result = await client.execute({
-      sql: 'INSERT INTO portfolio VALUES (:thumbnail, :alt, :title, :description)',
+      sql: "INSERT INTO portfolio (thumbnail, alt, title, description) VALUES (:thumbnail, :alt, :title, :description)",
       args: { thumbnail, alt, title, description },
     });
 
@@ -81,7 +84,9 @@ export const addAlbumService = async ({
 
 export const listAlbums = async () => {
   try {
-    const result = await client.execute('SELECT * FROM  portfolio');
+    const result = await client.execute(
+      "SELECT portfolio.*, albumPhotos.url FROM portfolio INNER JOIN albumPhotos ON porfolio_id = portfolio.id AND albumPhotos.name = portfolio.thumbnail WHERE url is not null"
+    );
     return { rows: result.rows, error: false };
   } catch (error) {
     console.error(error);
@@ -92,17 +97,17 @@ export const getUser = async ({ user, passUser }) => {
   let compare = false;
   try {
     const result = await client.execute({
-      sql: 'SELECT * FROM  user where user = :user',
+      sql: "SELECT * FROM  user where user = :user",
       args: { user },
     });
 
     if (!result.rows.length > 0)
-      return { msg: 'Usuario o contraseña incorrecta.', error: true };
+      return { msg: "Usuario o contraseña incorrecta.", error: true };
 
     const { pass } = result.rows[0];
     compare = bcrypt.compareSync(passUser, pass);
     if (!compare)
-      return { msg: 'Usuario o contraseña incorrecta.', error: true };
+      return { msg: "Usuario o contraseña incorrecta.", error: true };
 
     console.log({ passUser, pass, compare });
     return { rows: result.rows, error: false };
@@ -112,7 +117,7 @@ export const getUser = async ({ user, passUser }) => {
 };
 
 export const changePwdService = async ({ pwd }) => {
-  pwd = nvl(pwd, '').trim();
+  pwd = nvl(pwd, "").trim();
   const hashPwd = await bcrypt.hash(pwd, 10);
   return hashPwd;
 };

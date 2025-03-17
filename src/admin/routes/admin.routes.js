@@ -1,4 +1,4 @@
-import express from 'express';
+import express from "express";
 import {
   addAlbum,
   addPhotos,
@@ -6,20 +6,20 @@ import {
   getListAlbums,
   changePwd,
   getUsers,
-} from '../controllers/admin.controller.js';
-import { verifyToken } from '../middlewares/authJwt.js';
+} from "../controllers/admin.controller.js";
+import { verifyToken } from "../middlewares/authJwt.js";
 
 // requiero el ruteador
 const router = express.Router();
 
 // Endpoints
-router.get('/ping', (req, res) => {
-  res.status(200).send('Conexión exitosa');
+router.get("/ping", (req, res) => {
+  res.status(200).send("Conexión exitosa");
 });
-router.post('/login', login);
-router.post('/addAlbums', verifyToken, addAlbum);
-router.post('/addPhoto', verifyToken, addPhotos);
-router.get('/albums', getListAlbums);
-router.post('/users', getUsers);
-router.post('/changePassword', changePwd);
+router.post("/login", login);
+router.post("/albums", addAlbum);
+router.get("/albums", getListAlbums);
+router.post("/photo", verifyToken, addPhotos);
+router.post("/users", getUsers);
+router.post("/changePassword", changePwd);
 export default router;
