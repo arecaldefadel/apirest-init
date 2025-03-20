@@ -1,6 +1,15 @@
 import client from "../../db/connection.js";
 import bcrypt from "bcryptjs";
 import { nvl } from "../../utils.js";
+import cloudinary from "cloudinary";
+import config from "../../config.js";
+
+cloudinary.v2.config({
+  cloud_name: config.CLOUD_NAME_CLOUDINARY,
+  api_key: config.API_KEY_CLOUDINARY,
+  api_secret: config.API_SECRET_CLOUDINARY,
+  secure: true,
+});
 
 /** Función para el inicio de sesión del usuario al sistema.
  * @returns {Array} id y rol
@@ -63,6 +72,33 @@ export const addPhotoService = async ({ porfolio_id, images = [] }) => {
   }
 };
 
+export const deletePhotoService = async ({ id, name }) => {
+  try {
+    const result = await client.execute({
+      sql: "DELETE FROM albumPhotos WHERE id = :id",
+      args: { id },
+    });
+
+    if (result.error) return { msg: result.msg, error: true };
+    // Eliminar el archivo de Cloudinary con cloudinary v2
+    const resultCloudinary = await cloudinary.v2.api.delete_resources([name], {
+      type: "upload",
+      resource_type: "image",
+    });
+
+    if (resultCloudinary.error)
+      return { msg: resultCloudinary.error.message, error: true };
+
+    if (resultCloudinary.deleted[name] === "deleted") {
+      console.log("Imagen eliminada de Cloudinary");
+      return { data: "Imagen eliminada de Cloudinary", error: false };
+    }
+  } catch (error) {
+    console.error(error);
+    return { msg: error.message, error: true };
+  }
+};
+
 export const addAlbumService = async ({
   thumbnail = "",
   alt = "Foto de porfolio",
@@ -82,11 +118,33 @@ export const addAlbumService = async ({
   }
 };
 
-export const listAlbums = async () => {
+export const listAlbums = async ({ id }) => {
+  let result = {};
   try {
-    const result = await client.execute(
-      "SELECT portfolio.*, albumPhotos.url FROM portfolio INNER JOIN albumPhotos ON porfolio_id = portfolio.id AND albumPhotos.name = portfolio.thumbnail WHERE url is not null"
-    );
+    if (id > 0) {
+      result = await client.execute({
+        sql: "SELECT portfolio.*, albumPhotos.url FROM portfolio INNER JOIN albumPhotos ON porfolio_id = portfolio.id AND albumPhotos.name = portfolio.thumbnail WHERE url is not null and portfolio.id = :id",
+        args: { id },
+      });
+    } else {
+      result = await client.execute(
+        "SELECT portfolio.*, albumPhotos.url FROM portfolio INNER JOIN albumPhotos ON porfolio_id = portfolio.id AND albumPhotos.name = portfolio.thumbnail WHERE url is not null"
+      );
+    }
+
+    return { rows: result.rows, error: false };
+  } catch (error) {
+    console.error(error);
+  }
+};
+
+export const listPhotosByAlbumService = async ({ id }) => {
+  try {
+    const result = await client.execute({
+      sql: "SELECT id, width, height, url, name FROM albumPhotos where porfolio_id  = :id",
+      args: { id },
+    });
+
     return { rows: result.rows, error: false };
   } catch (error) {
     console.error(error);
