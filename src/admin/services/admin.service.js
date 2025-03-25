@@ -43,7 +43,7 @@ export const logger = async (user = "", pass) => {
   });
 };
 
-export const addPhotoService = async ({ porfolio_id, images = [] }) => {
+export const addImageService = async ({ porfolio_id, images = [] }) => {
   try {
     let queryInsert = `INSERT INTO albumPhotos (porfolio_id, width,height, name, url) VALUES `;
     let queryValues = "";
@@ -72,7 +72,7 @@ export const addPhotoService = async ({ porfolio_id, images = [] }) => {
   }
 };
 
-export const deletePhotoService = async ({ id, name }) => {
+export const deleteImageService = async ({ id, name }) => {
   try {
     const result = await client.execute({
       sql: "DELETE FROM albumPhotos WHERE id = :id",
@@ -118,6 +118,55 @@ export const addAlbumService = async ({
   }
 };
 
+export const updateAlbumService = async ({
+  id = 0,
+  thumbnail = "",
+  title = "",
+  description = "",
+}) => {
+  try {
+    const result = await client.execute({
+      sql: "UPDATE portfolio SET thumbnail = :thumbnail, title = :title, description = :description WHERE id = :id",
+      args: { id, thumbnail, title, description },
+    });
+
+    if (result.error) return { msg: result.msg, error: true };
+
+    return { data: "Album actualizado correctamente", error: false };
+  } catch (error) {
+    console.error(error);
+    return { msg: error.message, error: true };
+  }
+};
+
+export const deleteAlbumService = async ({ id }) => {
+  try {
+    const countImagesRel = await client.execute({
+      sql: "SELECT COUNT(*) COUNT_ROWS FROM albumPhotos where porfolio_id = :porfolio_id;",
+      args: { porfolio_id: id },
+    });
+
+    const countImages = countImagesRel.rows[0].COUNT_ROWS;
+    if (countImages > 0) {
+      return { msg: "El álbum tiene fotos asociadas.", error: true };
+    }
+
+    const deleteAlbumResult = await client.execute({
+      sql: "DELETE FROM portfolio WHERE id = :id",
+      args: { id },
+    });
+
+    if (deleteAlbumResult.error) {
+      return { msg: deleteAlbumResult.msg, error: true };
+    }
+
+    return { data: deleteAlbumResult.rowsAffected, error: false };
+  } catch (error) {
+    console.error(error);
+    return { msg: error.message, error: true };
+  }
+};
+
 export const listAlbums = async ({ id }) => {
   let result = {};
   try {
@@ -138,7 +187,7 @@ export const listAlbums = async ({ id }) => {
   }
 };
 
-export const listPhotosByAlbumService = async ({ id }) => {
+export const listImagesByAlbumService = async ({ id }) => {
   try {
     const result = await client.execute({
       sql: "SELECT id, width, height, url, name FROM albumPhotos where porfolio_id  = :id",

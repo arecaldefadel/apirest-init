@@ -1,17 +1,39 @@
 import {
   listAlbums,
   addAlbumService,
-  addPhotoService,
+  addImageService,
   getUser,
   changePwdService,
-  listPhotosByAlbumService,
-  deletePhotoService,
+  listImagesByAlbumService,
+  deleteImageService,
+  deleteAlbumService,
+  updateAlbumService,
 } from "../services/admin.service.js";
 
 export const login = async (req, res) => {
   const { id } = req.body;
 
   const request = await getData(id);
+  if (request?.error) {
+    return res.status(401).json({ error: true, msg: request.msg });
+  }
+  return res.status(200).json({ error: false, msg: request.data });
+};
+
+export const addImages = async (req, res) => {
+  const { porfolio_id, images } = req.body;
+
+  const request = await addImageService({ porfolio_id, images });
+  if (request?.error) {
+    return res.status(401).json({ error: true, msg: request.msg });
+  }
+  return res.status(200).json({ error: false, msg: request.data });
+};
+
+export const deleteImage = async (req, res) => {
+  const { id, name } = req.body;
+  const request = await deleteImageService({ id, name });
+
   if (request?.error) {
     return res.status(401).json({ error: true, msg: request.msg });
   }
@@ -32,35 +54,40 @@ export const addAlbum = async (req, res) => {
 
   console.log("images", images);
 
-  const requestPhotos = await addPhotoService({
+  const requestImages = await addImageService({
     porfolio_id: requestAlbum.data.lastInsertRowid,
     images,
   });
-  if (requestPhotos?.error) {
+  if (requestImages?.error) {
     return res.status(400).json({ error: true, msg: request.msg });
   }
 
-  return res.status(200).json({ error: false, msg: requestPhotos.data });
+  return res.status(200).json({ error: false, msg: requestImages.data });
 };
 
-export const addPhotos = async (req, res) => {
-  const { porfolio_id, images } = req.body;
-
-  const request = await addPhotoService({ porfolio_id, images });
-  if (request?.error) {
-    return res.status(401).json({ error: true, msg: request.msg });
-  }
-  return res.status(200).json({ error: false, msg: request.data });
-};
-
-export const deletePhoto = async (req, res) => {
-  const { id, name } = req.body;
-  const request = await deletePhotoService({ id, name });
+export const deleteAlbum = async (req, res) => {
+  const { id } = req.body;
+  const request = await deleteAlbumService({ id });
 
   if (request?.error) {
     return res.status(401).json({ error: true, msg: request.msg });
   }
-  return res.status(200).json({ error: false, msg: request.data });
+  return res.status(200).json({ error: false, data: request.data });
+};
+
+export const updateAlbum = async (req, res) => {
+  const { id, thumbnail, title, description } = req.body;
+  const request = await updateAlbumService({
+    id,
+    thumbnail,
+    title,
+    description,
+  });
+
+  if (request?.error) {
+    return res.status(401).json({ error: true, msg: request.msg });
+  }
+  return res.status(200).json({ error: false, data: request.data });
 };
 
 export const getListAlbums = async (req, res) => {
@@ -72,9 +99,9 @@ export const getListAlbums = async (req, res) => {
   return res.status(200).json({ error: false, data: request });
 };
 
-export const listPhotosByAlbum = async (req, res) => {
+export const listImagesByAlbum = async (req, res) => {
   const { id } = req.params;
-  const request = await listPhotosByAlbumService({ id });
+  const request = await listImagesByAlbumService({ id });
   if (request?.error) {
     return res.status(401).json({ error: true, msg: request.msg });
   }

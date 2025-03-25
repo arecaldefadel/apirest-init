@@ -1,13 +1,15 @@
 import express from "express";
 import {
   addAlbum,
-  addPhotos,
+  addImages,
   login,
   getListAlbums,
-  listPhotosByAlbum,
+  listImagesByAlbum,
   changePwd,
   getUsers,
-  deletePhoto,
+  deleteImage,
+  deleteAlbum,
+  updateAlbum,
 } from "../controllers/admin.controller.js";
 import { verifyToken } from "../middlewares/authJwt.js";
 
@@ -21,10 +23,12 @@ router.get("/ping", (req, res) => {
 router.post("/login", login);
 router.post("/users", getUsers);
 router.post("/changePassword", changePwd);
-router.post("/photo", addPhotos);
-router.delete("/photo", deletePhoto);
+router.post("/image", addImages);
+router.delete("/image", deleteImage);
 router.post("/albums", addAlbum);
 router.get("/albums", getListAlbums);
-router.get("/albums/:id", listPhotosByAlbum);
+router.delete("/albums", deleteAlbum);
+router.put("/albums", updateAlbum);
+router.get("/albums/:id", listImagesByAlbum);
 
 export default router;
