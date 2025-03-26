@@ -160,6 +160,14 @@ export const deleteAlbumService = async ({ id }) => {
       return { msg: deleteAlbumResult.msg, error: true };
     }
 
+    // cloudinary.v2.api
+    //   .delete_folder("/Gatitos")
+    //   .then(console.log)
+    //   .catch((err) => {
+    //     console.error(err);
+    //     return { msg: err.message, error: true };
+    //   });
+
     return { data: deleteAlbumResult.rowsAffected, error: false };
   } catch (error) {
     console.error(error);
