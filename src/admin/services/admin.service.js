@@ -1,4 +1,4 @@
-import client from "../../db/connection.js";
+import { clientSupabase } from "../../db/connection.js";
 import bcrypt from "bcryptjs";
 import { nvl } from "../../utils.js";
 import cloudinary from "cloudinary";
@@ -16,56 +16,45 @@ cloudinary.v2.config({
  */
 export const logger = async (user = "", pass) => {
   let compare = false;
-  let result = [];
-  const verifyCUITQr = "SELECT * FROM user where user = @USER";
-  const verifyCUITRst = await client.execute(verifyCUITQr);
-  const { rows: usuario } = verifyCUITQr;
 
-  // if (!usuario) {
-  //   const dataUserQuery =
-  //     'SELECT * FROM USUARIOS_FP where UFP_USUARIO = @UFP_USUARIO AND ELIMINADO = 0';
-  //   const resultDataUser = await pool
-  //     .request()
-  //     .input('USER', sql.NVarChar, nvl(user, '').trim().toLowerCase())
-  //     .query(dataUserQuery);
-  //   result = resultDataUser.recordset[0];
-  // }
+  let { data: userData, error } = await clientSupabase
+    .from("user")
+    .select("*")
+    .eq("user", user);
 
-  if (result) compare = bcrypt.compareSync(pass, result.UFP_PWD);
+  if (error) return { msg: error.message, error: true };
 
-  return new Promise((resolve, reject) => {
-    compare
-      ? resolve({
-          id: result.UFP_CODIGO,
-          rol: 1,
-        })
-      : resolve({ error: true });
-  });
+  if (!userData || userData.length === 0)
+    return { msg: "Usuario o contraseña incorrecta.", error: true };
+
+  const { pass: userPass } = userData[0];
+  compare = bcrypt.compareSync(pass, userPass);
+  if (!compare) return { msg: "Usuario o contraseña incorrecta.", error: true };
+
+  return { data: userData, error: false };
 };
 
 export const addImageService = async ({ porfolio_id, images = [] }) => {
   try {
-    let queryInsert = `INSERT INTO albumPhotos (porfolio_id, width,height, name, url) VALUES `;
-    let queryValues = "";
-    let queryArgs = {};
-    let i = 0;
-    for (const img of images) {
-      queryValues += `(:porfolio_id, :width${i}, :height${i}, :name${i}, :url${i}),`;
-      queryArgs[`width${i}`] = img.width;
-      queryArgs[`height${i}`] = img.height;
-      queryArgs[`name${i}`] = img.id;
-      queryArgs[`url${i}`] = img.url;
-      i++;
-    }
-    queryValues = queryValues.slice(0, -1);
-    queryInsert += queryValues;
+    if (!porfolio_id || images.length === 0)
+      return { msg: "Sin imágenes o porfolio_id inválido.", error: true };
 
-    const result = await client.execute({
-      sql: queryInsert,
-      args: { porfolio_id, ...queryArgs },
-    });
+    const rowsToInsert = images.map((img) => ({
+      porfolio_id,
+      width: img.width,
+      height: img.height,
+      name: img.id,
+      url: img.url,
+    }));
 
-    return { data: result, error: false };
+    const { data, error } = await clientSupabase
+      .from("album_photos")
+      .insert(rowsToInsert)
+      .select();
+
+    if (error) return { msg: error.message, error: true };
+
+    return { data, error: false };
   } catch (error) {
     console.error(error);
     return { msg: error.message, error: true };
@@ -74,12 +63,13 @@ export const addImageService = async ({ porfolio_id, images = [] }) => {
 
 export const deleteImageService = async ({ id, name }) => {
   try {
-    const result = await client.execute({
-      sql: "DELETE FROM albumPhotos WHERE id = :id",
-      args: { id },
-    });
+    let { data: deleteImageResult, error: deleteImageError } =
+      await clientSupabase.from("album_photos").delete().eq("id", id);
 
-    if (result.error) return { msg: result.msg, error: true };
+    if (deleteImageError) {
+      return { msg: deleteImageError.message, error: true };
+    }
+
     // Eliminar el archivo de Cloudinary con cloudinary v2
     const resultCloudinary = await cloudinary.v2.api.delete_resources([name], {
       type: "upload",
@@ -90,7 +80,6 @@ export const deleteImageService = async ({ id, name }) => {
       return { msg: resultCloudinary.error.message, error: true };
 
     if (resultCloudinary.deleted[name] === "deleted") {
-      console.log("Imagen eliminada de Cloudinary");
       return { data: "Imagen eliminada de Cloudinary", error: false };
     }
   } catch (error) {
@@ -106,12 +95,15 @@ export const addAlbumService = async ({
   description = "",
 }) => {
   try {
-    const result = await client.execute({
-      sql: "INSERT INTO portfolio (thumbnail, alt, title, description) VALUES (:thumbnail, :alt, :title, :description)",
-      args: { thumbnail, alt, title, description },
-    });
+    let { data: addAlbumResult, error: addAlbumError } = await clientSupabase
+      .from("portfolio")
+      .insert({ thumbnail, alt, title, description });
 
-    return { data: result, error: false };
+    if (addAlbumError) {
+      return { msg: addAlbumError.message, error: true };
+    }
+
+    return { data: addAlbumResult, error: false };
   } catch (error) {
     console.error(error);
     return { msg: error.message, error: true };
@@ -125,14 +117,24 @@ export const updateAlbumService = async ({
   description = "",
 }) => {
   try {
-    const result = await client.execute({
-      sql: "UPDATE portfolio SET thumbnail = :thumbnail, title = :title, description = :description WHERE id = :id",
-      args: { id, thumbnail, title, description },
+    let { data: updateAlbumResult, error: updateAlbumError } =
+      await clientSupabase
+        .from("portfolio")
+        .update({ thumbnail, title, description })
+        .eq("id", id);
+
+    console.log({
+      id,
+      thumbnail,
+      title,
+      description,
     });
 
-    if (result.error) return { msg: result.msg, error: true };
+    if (updateAlbumError) {
+      return { msg: updateAlbumError.message, error: true };
+    }
 
-    return { data: "Album actualizado correctamente", error: false };
+    return { data: updateAlbumResult, error: false };
   } catch (error) {
     console.error(error);
     return { msg: error.message, error: true };
@@ -141,23 +143,20 @@ export const updateAlbumService = async ({
 
 export const deleteAlbumService = async ({ id }) => {
   try {
-    const countImagesRel = await client.execute({
-      sql: "SELECT COUNT(*) COUNT_ROWS FROM albumPhotos where porfolio_id = :porfolio_id;",
-      args: { porfolio_id: id },
-    });
+    let { data: countImagesRel, error } = await clientSupabase
+      .from("album_photos")
+      .select("porfolio_id")
+      .eq("porfolio_id", id);
 
-    const countImages = countImagesRel.rows[0].COUNT_ROWS;
-    if (countImages > 0) {
+    if (countImagesRel.length > 0) {
       return { msg: "El álbum tiene fotos asociadas.", error: true };
     }
 
-    const deleteAlbumResult = await client.execute({
-      sql: "DELETE FROM portfolio WHERE id = :id",
-      args: { id },
-    });
+    let { data: deleteAlbumResult, error: deleteAlbumError } =
+      await clientSupabase.from("portfolio").delete().eq("id", id);
 
-    if (deleteAlbumResult.error) {
-      return { msg: deleteAlbumResult.msg, error: true };
+    if (deleteAlbumError) {
+      return { msg: deleteAlbumError.message, error: true };
     }
 
     // cloudinary.v2.api
@@ -168,7 +167,7 @@ export const deleteAlbumService = async ({ id }) => {
     //     return { msg: err.message, error: true };
     //   });
 
-    return { data: deleteAlbumResult.rowsAffected, error: false };
+    return { data: deleteAlbumResult, error: false };
   } catch (error) {
     console.error(error);
     return { msg: error.message, error: true };
@@ -176,63 +175,60 @@ export const deleteAlbumService = async ({ id }) => {
 };
 
 export const listAlbums = async ({ id }) => {
-  let result = {};
   try {
-    if (id > 0) {
-      result = await client.execute({
-        sql: "SELECT portfolio.*, albumPhotos.url FROM portfolio INNER JOIN albumPhotos ON porfolio_id = portfolio.id AND albumPhotos.name = portfolio.thumbnail WHERE url is not null and portfolio.id = :id",
-        args: { id },
-      });
-    } else {
-      result = await client.execute(
-        "SELECT portfolio.*, albumPhotos.url FROM portfolio INNER JOIN albumPhotos ON porfolio_id = portfolio.id AND albumPhotos.name = portfolio.thumbnail WHERE url is not null"
-      );
-    }
-
-    return { rows: result.rows, error: false };
+    let { data: albumPhotos, error } = await clientSupabase
+      .from("albums_principal")
+      .select("*");
+    console.log({ albumPhotos, error });
+    // .is("portfolio.id", id ? id : null);
+    if (error) return { msg: error.message, error: true };
+    return { data: albumPhotos, error: false };
   } catch (error) {
-    console.error(error);
+    console.error(error.message);
+    return { msg: error.message, error: true };
   }
 };
 
 export const listImagesByAlbumService = async ({ id }) => {
   try {
-    const result = await client.execute({
-      sql: "SELECT id, width, height, url, name FROM albumPhotos where porfolio_id  = :id",
-      args: { id },
-    });
-
-    return { rows: result.rows, error: false };
+    let { data: albumPhotos, error } = await clientSupabase
+      .from("album_photos")
+      .select("*")
+      .eq("porfolio_id", id);
+    return albumPhotos;
   } catch (error) {
-    console.error(error);
+    console.error(error.message);
   }
 };
 
 export const getUser = async ({ user, passUser }) => {
   let compare = false;
   try {
-    const result = await client.execute({
-      sql: "SELECT * FROM  user where user = :user",
-      args: { user },
-    });
+    let { data: userData, error } = await clientSupabase
+      .from("user")
+      .select("*")
+      .eq("user", user);
 
-    if (!result.rows.length > 0)
+    if (!userData || userData.length === 0)
       return { msg: "Usuario o contraseña incorrecta.", error: true };
 
-    const { pass } = result.rows[0];
+    const { pass } = userData[0];
     compare = bcrypt.compareSync(passUser, pass);
     if (!compare)
       return { msg: "Usuario o contraseña incorrecta.", error: true };
 
-    console.log({ passUser, pass, compare });
-    return { rows: result.rows, error: false };
+    return { rows: userData, error: false };
   } catch (error) {
     console.error(error);
   }
 };
 
 export const changePwdService = async ({ pwd }) => {
-  pwd = nvl(pwd, "").trim();
-  const hashPwd = await bcrypt.hash(pwd, 10);
-  return hashPwd;
+  try {
+    const hashPwd = await bcrypt.hash(pwd, 10);
+    return { data: hashPwd, error: false };
+  } catch (error) {
+    console.error(error);
+    return { msg: error.message, error: true };
+  }
 };
