@@ -33,7 +33,7 @@ export const addImages = async (req, res) => {
 export const deleteImage = async (req, res) => {
   const { id, name } = req.body;
   const request = await deleteImageService({ id, name });
-
+  console.log(request);
   if (request?.error) {
     return res.status(401).json({ error: true, msg: request.msg });
   }
@@ -49,17 +49,17 @@ export const addAlbum = async (req, res) => {
     description,
   });
   if (requestAlbum?.error) {
-    return res.status(400).json({ error: true, msg: request.msg });
+    return res.status(400).json({ error: true, msg: requestAlbum.msg });
   }
 
   console.log("images", images);
 
   const requestImages = await addImageService({
-    porfolio_id: requestAlbum.data.lastInsertRowid,
+    porfolio_id: requestAlbum.data[0].id,
     images,
   });
   if (requestImages?.error) {
-    return res.status(400).json({ error: true, msg: request.msg });
+    return res.status(400).json({ error: true, msg: requestImages.msg });
   }
 
   return res.status(200).json({ error: false, msg: requestImages.data });
